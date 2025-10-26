@@ -155,7 +155,13 @@ export const loggedInUser = asyncHandler(async (req, res) => {
       .status(200)
       .cookie("accessToken", createdAccessToken, options)
       .cookie("refreshToken", createdRefreshToken, options)
-      .json(new ApiResponse(200, loggedInUser, "Successfuly Logged In"));
+      .json(
+        new ApiResponse(
+          200,
+          { loggedInUser, createdAccessToken, createdRefreshToken },
+          "Successfuly Logged In"
+        )
+      );
   } catch (error) {
     console.error("Error during login:", error);
     res
@@ -169,4 +175,26 @@ export const loggedInUser = asyncHandler(async (req, res) => {
         )
       );
   }
+});
+
+export const loggedOut = asyncHandler(async (req, res) => {
+  const userId = req.user?._id;
+
+  await User.findByIdAndUpdate(
+    userId,
+    {
+      $unset: {
+        refreshToken: 1,
+      },
+    },
+    {
+      new: true,
+    }
+  );
+
+  res
+    .status(200)
+    .clearCookie("accessToken", options)
+    .clearCookie("refreshToken", options)
+    .json(new ApiResponse(200, {}, "Logged Out Successfuly"));
 });
