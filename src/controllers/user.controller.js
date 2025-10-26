@@ -4,6 +4,23 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import asyncHandler from "../utils/asyncHandler.js";
 import { uploadOncloudinary } from "../utils/uploadOnCloudinary.js";
 
+const generateAccessAndRefreshToken = async (userId) => {
+  try {
+    const user = await User.findById(userId);
+    const createdAccessToken = await user.accessToken();
+    const createdRefreshToken = await user.generateRefreshToken();
+
+    user.refreshToken = createdRefreshToken;
+    await user.save({ validateBeforeSave: false });
+
+    return { createdAccessToken, createdRefreshToken };
+  } catch (error) {
+    throw new ApiError(
+      500,
+      `Something went wrong while generating refresh token and access token: ${error}`
+    );
+  }
+};
 
 export const registerUser = asyncHandler(async (req, res) => {
   // get username from frontend
@@ -15,7 +32,7 @@ export const registerUser = asyncHandler(async (req, res) => {
   // send response
   try {
     const { name, email, password, role, preferences } = req.body;
-    const  avatar  = req.file.path;
+    const avatar = req.file.path;
 
     if ([name, email, password].some((fields) => fields?.trim() === "")) {
       throw new ApiError(400, "All Fields are required to Register");
@@ -48,7 +65,6 @@ export const registerUser = asyncHandler(async (req, res) => {
 
     const uploadAvatar = await uploadOncloudinary(avatar);
 
-
     if (!uploadAvatar) {
       throw new ApiError(500, "Avatar is not uploaded in register function");
     }
@@ -77,12 +93,80 @@ export const registerUser = asyncHandler(async (req, res) => {
               : true,
         },
       },
-    }).select("-password")
+    });
+
+    res
+      .status(201) // Using 201 for resource creation
+      .json(new ApiResponse(201, user, "User created successfully", true));
+  } catch (error) {
+    console.error("Error while registering user:", error);
+    res
+      .status(error.statusCode || 500)
+      .json(
+        new ApiResponse(
+          error.statusCode || 500,
+          null,
+          error.message || "Internal server error",
+          false
+        )
+      );
+  }
+});
+
+const options = {
+  httpOnly: true, // ✅ prevents access by JS in browser
+  secure: false,
+};
+export const loggedInUser = asyncHandler(async (req, res) => {
+  //Get data from user;
+  //check all fields are not empty;
+  //check user either exist or not;
+  // check password is correct;
+  //create access and refresh tokens;
+  //remove password from the user data;
+  // send response;
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      throw new ApiError(403, "Email and password are required");
+    }
+
+    const user = await User.findOne({ email: email.toLowerCase().trim() });
+
+    if (!user) {
+      throw new ApiError(400, "Invalid email or password");
+    }
+
+    const correctPassword = await user.isPasswordCorrect(password);
+
+    if (!correctPassword) {
+      throw new ApiError(405, "Enter valid password");
+    }
+
+    const { createdAccessToken, createdRefreshToken } =
+      await generateAccessAndRefreshToken(user._id);
+
+    const loggedInUser = await User.findById(user._id).select(
+      "-password -refreshToken"
+    );
 
     res
       .status(200)
-      .json(new ApiResponse(200, user, "User created Successfuly", true));
+      .cookie("accessToken", createdAccessToken, options)
+      .cookie("refreshToken", createdRefreshToken, options)
+      .json(new ApiResponse(200, loggedInUser, "Successfuly Logged In"));
   } catch (error) {
-    console.log("Error while Register user:", error);
+    console.error("Error during login:", error);
+    res
+      .status(error.statusCode || 500)
+      .json(
+        new ApiResponse(
+          error.statusCode || 500,
+          null,
+          error.message || "Internal server error",
+          false
+        )
+      );
   }
 });
