@@ -4,6 +4,7 @@ import {
   loggedInUser,
   loggedOut,
   registerUser,
+  updateAvatar,
   updateUser,
 } from "../controllers/user.controller.js";
 import { upload } from "../middlewares/multer.middleware.js";
@@ -17,3 +18,6 @@ routes.route("/logged-in").post(loggedInUser);
 routes.route("/logged-out").post(authentication, loggedOut);
 routes.route("/update-user-detail").patch(authentication, updateUser);
 routes.route("/change-password").patch(authentication, changePassword);
+routes
+  .route("/update-Avatar")
+  .patch(authentication, upload.single("avatar"), updateAvatar);

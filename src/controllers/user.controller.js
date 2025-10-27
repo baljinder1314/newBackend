@@ -2,7 +2,10 @@ import { User } from "../models/user.model.js";
 import ApiError from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import asyncHandler from "../utils/asyncHandler.js";
-import { uploadOncloudinary } from "../utils/uploadOnCloudinary.js";
+import {
+  deleteFromCloudinary,
+  uploadOncloudinary,
+} from "../utils/uploadOnCloudinary.js";
 import bcrypt from "bcrypt";
 
 const generateAccessAndRefreshToken = async (userId) => {
@@ -75,6 +78,7 @@ export const registerUser = asyncHandler(async (req, res) => {
       email: email.toLowerCase().trim(),
       password,
       avatar: uploadAvatar?.url,
+      avatarPublic_id: uploadAvatar?.public_id,
       role: role || "user",
       preferences: {
         theme: preferences?.theme || "light",
@@ -226,24 +230,76 @@ export const updateUser = asyncHandler(async (req, res) => {
 
 export const changePassword = asyncHandler(async (req, res) => {
   try {
-    const user = req.user;
+    const authUser = req.user;
+    if (!authUser?._id) {
+      throw new ApiError(401, "Unauthorized");
+    }
 
-    console.log(user);
     const { newPassword, oldPassword } = req.body;
 
-    const varifyOldPassword = await user.isPasswordCorrect(oldPassword);
+    if (!oldPassword || !newPassword) {
+      throw new ApiError(400, "Both oldPassword and newPassword are required");
+    }
 
-    if (!varifyOldPassword) {
+    const user = await User.findById(authUser._id);
+    if (!user) {
+      throw new ApiError(404, "User not found");
+    }
+
+    const verifyOldPassword = await user.isPasswordCorrect(oldPassword);
+
+    if (!verifyOldPassword) {
       throw new ApiError(405, "Enter valid Password");
     }
 
     user.password = newPassword;
-    user.save({ validateBeforeSave: false });
+    await user.save();
 
-    res
-      .status(200)
-      .json(new ApiResponse(200, { }, "Password Changed"));
+    res.status(200).json(new ApiResponse(200, {}, "Password Changed"));
   } catch (error) {
     console.log(`Error while change Password ${error}`);
+    res
+      .status(error.statusCode || 500)
+      .json(
+        new ApiResponse(
+          error.statusCode || 500,
+          null,
+          error.message || "Internal server error",
+          false
+        )
+      );
   }
+});
+
+export const updateAvatar = asyncHandler(async (req, res) => {
+  const user = req.user._id;
+  const avatar = req.file.path;
+
+  if (!avatar) {
+    throw new ApiError(403, "Avatar is missing");
+  }
+
+  const newAvatar = await uploadOncloudinary(avatar);
+  if (!newAvatar?.secure_url) {
+    throw new ApiError(403, "not updated on cloudinary");
+  }
+
+  const deleteAvatar = await User.findById(user);
+
+  await deleteFromCloudinary(deleteAvatar?.avatarPublic_id);
+
+  const newAvatarUpdated = await User.findByIdAndUpdate(
+    user,
+    {
+      $set: {
+        avatar: newAvatar.secure_url,
+        avatarPublic_id: newAvatar.public_id,
+      },
+    },
+    { new: true }
+  ).select("-password -refreshToken");
+
+  res
+    .status(200)
+    .json(new ApiResponse(200, newAvatarUpdated, "Avatar updated Successfuly"));
 });
