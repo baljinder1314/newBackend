@@ -198,3 +198,27 @@ export const loggedOut = asyncHandler(async (req, res) => {
     .clearCookie("refreshToken", options)
     .json(new ApiResponse(200, {}, "Logged Out Successfuly"));
 });
+
+export const updateUser = asyncHandler(async (req, res) => {
+  const { name } = req.body;
+
+  if (!name) {
+    throw new ApiError(403, "Name is required to update name");
+  }
+
+  const user = req.user?._id;
+
+  const updatedUser = await User.findByIdAndUpdate(
+    user,
+    {
+      $set: {
+        name,
+      },
+    },
+    { new: true }
+  ).select("-password -refreshToken");
+
+  res
+    .status(200)
+    .json(new ApiResponse(200, updatedUser, "Successfuly Update User"));
+});
