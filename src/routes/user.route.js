@@ -1,5 +1,6 @@
 import express from "express";
 import {
+  changePassword,
   loggedInUser,
   loggedOut,
   registerUser,
@@ -15,3 +16,4 @@ routes.route("/register").post(upload.single("avatar"), registerUser);
 routes.route("/logged-in").post(loggedInUser);
 routes.route("/logged-out").post(authentication, loggedOut);
 routes.route("/update-user-detail").patch(authentication, updateUser);
+routes.route("/change-password").patch(authentication, changePassword);

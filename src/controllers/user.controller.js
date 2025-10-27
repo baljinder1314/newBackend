@@ -3,6 +3,7 @@ import ApiError from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import asyncHandler from "../utils/asyncHandler.js";
 import { uploadOncloudinary } from "../utils/uploadOnCloudinary.js";
+import bcrypt from "bcrypt";
 
 const generateAccessAndRefreshToken = async (userId) => {
   try {
@@ -221,4 +222,28 @@ export const updateUser = asyncHandler(async (req, res) => {
   res
     .status(200)
     .json(new ApiResponse(200, updatedUser, "Successfuly Update User"));
+});
+
+export const changePassword = asyncHandler(async (req, res) => {
+  try {
+    const user = req.user;
+
+    console.log(user);
+    const { newPassword, oldPassword } = req.body;
+
+    const varifyOldPassword = await user.isPasswordCorrect(oldPassword);
+
+    if (!varifyOldPassword) {
+      throw new ApiError(405, "Enter valid Password");
+    }
+
+    user.password = newPassword;
+    user.save({ validateBeforeSave: false });
+
+    res
+      .status(200)
+      .json(new ApiResponse(200, { }, "Password Changed"));
+  } catch (error) {
+    console.log(`Error while change Password ${error}`);
+  }
 });
