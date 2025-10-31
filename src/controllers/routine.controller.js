@@ -196,3 +196,21 @@ export const updateRoutine = asyncHandler(async (req, res) => {
     throw new ApiError(200, error);
   }
 });
+
+export const deleteRoutine = asyncHandler(async (req, res) => {
+  try {
+    const userId = req.user._id;
+    if (!userId) {
+      throw new ApiError(400, "Invalid user while deleting routine");
+    }
+    const deleteRoutine = await Routine.findByIdAndDelete(req.params.id);
+    if (!deleteRoutine) {
+      throw new ApiError(400, "Routine note found while deleting");
+    }
+    res
+      .status(200)
+      .json(new ApiResponse(200, {}, "Routine Delete successfuly"));
+  } catch (error) {
+    throw new ApiError(400, error);
+  }
+});
