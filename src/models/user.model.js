@@ -33,9 +33,15 @@ const userSchema = new Schema(
       type: String,
       required: true,
     },
-    avatarPublic_id:{
-      type:String,
+    avatarPublic_id: {
+      type: String,
     },
+    phone: {
+      type: String,
+      required: true,
+      unique: true,
+    },
+
     refreshToken: {
       type: String,
     },

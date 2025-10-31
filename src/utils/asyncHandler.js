@@ -1,10 +1,10 @@
-import { ApiResponse } from "./ApiResponse.js";
+import ApiError from "./ApiError.js";
 
 const asyncHandler = (fn) => async (req, res, next) => {
   try {
     await fn(req, res, next);
   } catch (error) {
-    res.status(500).json(new ApiResponse(500, error));
+    throw new ApiError(500, error);
   }
 };
 

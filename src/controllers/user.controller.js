@@ -6,7 +6,6 @@ import {
   deleteFromCloudinary,
   uploadOncloudinary,
 } from "../utils/uploadOnCloudinary.js";
-import bcrypt from "bcrypt";
 
 const generateAccessAndRefreshToken = async (userId) => {
   try {
@@ -35,10 +34,12 @@ export const registerUser = asyncHandler(async (req, res) => {
   // create user.
   // send response
   try {
-    const { name, email, password, role, preferences } = req.body;
+    const { name, email, password, role, preferences, phone } = req.body;
     const avatar = req.file.path;
 
-    if ([name, email, password].some((fields) => fields?.trim() === "")) {
+    if (
+      [name, email, password, phone].some((fields) => fields?.trim() === "")
+    ) {
       throw new ApiError(400, "All Fields are required to Register");
     }
 
@@ -77,6 +78,7 @@ export const registerUser = asyncHandler(async (req, res) => {
       name: name.trim(),
       email: email.toLowerCase().trim(),
       password,
+      phone,
       avatar: uploadAvatar?.url,
       avatarPublic_id: uploadAvatar?.public_id,
       role: role || "user",
@@ -303,3 +305,6 @@ export const updateAvatar = asyncHandler(async (req, res) => {
     .status(200)
     .json(new ApiResponse(200, newAvatarUpdated, "Avatar updated Successfuly"));
 });
+
+
+
