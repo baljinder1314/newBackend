@@ -36,8 +36,8 @@ const routineSchema = new mongoose.Schema(
       default: "pending",
     },
     recurring_pattern_id: {
-      type: String,
-      default: null,
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "RecurringPattern",
     },
   },
   { timestamps: true }
