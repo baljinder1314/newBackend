@@ -69,3 +69,57 @@ export const getAllTasks = asyncHandler(async (req, res) => {
     throw new ApiError(500, "Error fetching tasks", error);
   }
 });
+
+export const updateTaskById = asyncHandler(async (req, res) => {
+  try {
+    // ✅ Allowed fields for update
+    const allowedUpdates = [
+      "title",
+      "description",
+      "start_time",
+      "end_time",
+      "priority",
+      "status",
+      "routine_id",
+      "recurring_pattern_id",
+    ];
+
+    // ✅ Filter only allowed fields from req.body
+    const updates = {};
+    Object.keys(req.body).forEach((key) => {
+      if (allowedUpdates.includes(key)) {
+        updates[key] = req.body[key];
+      }
+    });
+    // ✅ Convert time strings if provided
+    if (updates.start_time) {
+      updates.start_time = convertTimeToDate(updates.start_time);
+    }
+    if (updates.end_time) {
+      updates.end_time = convertTimeToDate(updates.end_time);
+    }
+
+    updates.updated_at = Date.now();
+
+    const task = await Task.findByIdAndUpdate(
+      {
+        _id: req.params.id,
+        user_id: req.user?._id,
+      },
+      updates,
+      { new: true, runValidators: true }
+    );
+    if (!task) {
+      throw new ApiError(404, "task not found");
+    }
+
+    res
+      .status(200)
+      .json(new ApiResponse(200, task, "Task updated successfully"));
+  } catch (error) {
+    res.status(500).json({
+      message: "Error updating task",
+      error: error.message, // ✅ FIXED
+    });
+  }
+});
